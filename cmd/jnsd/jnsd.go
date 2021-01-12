@@ -76,7 +76,7 @@ func run(ctx context.Context) error {
 		Name: func(name string) (string, error) {
 			addr, ok := mapping.Name[name]
 			if !ok {
-				return "", jnsd.NotFound
+				return "", jnsd.NotRegistered
 			}
 			return addr, nil
 		},
@@ -84,7 +84,7 @@ func run(ctx context.Context) error {
 		Addr: func(addr string) (string, error) {
 			name, ok := mapping.Addr[addr]
 			if !ok {
-				return "", jnsd.NotFound
+				return "", jnsd.NotRegistered
 			}
 			return name, nil
 		},

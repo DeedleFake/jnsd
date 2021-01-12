@@ -11,7 +11,9 @@ import (
 )
 
 var (
-	NotFound = errors.New("not registered")
+	// NotRegistered is a generic error to be returned if a name or
+	// address is not registered.
+	NotRegistered = errors.New("not registered")
 )
 
 type HandlerConfig struct {
