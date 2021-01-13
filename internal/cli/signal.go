@@ -6,6 +6,8 @@ import (
 	"os/signal"
 )
 
+// SignalContext returns a context that is canceled when the given
+// signal is received.
 func SignalContext(ctx context.Context, signals ...os.Signal) (context.Context, context.CancelFunc) {
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {

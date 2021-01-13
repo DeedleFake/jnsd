@@ -16,18 +16,26 @@ var (
 	NotRegistered = errors.New("not registered")
 )
 
+// HandlerConfig defines necessary configuration for running the
+// nameserver handler.
 type HandlerConfig struct {
+	// Name is a function which maps from a name to an address. It must
+	// not be nil.
 	Name func(name string) (string, error)
+
+	// Addr is a function which maps from an address to a name. It must
+	// not be nil.
 	Addr func(addr string) (string, error)
 }
 
+// Handler returns an http.Handler from a config.
 func (config HandlerConfig) Handler() http.Handler {
 	router := mux.NewRouter()
 
 	router.
 		Methods("GET", "OPTIONS").
 		Path("/name/{name}").
-		Handler(get(func(n, a string) (name, addr string, err error) {
+		Handler(handleGet(func(n, a string) (name, addr string, err error) {
 			log.Printf("request to resolve name: %q", n)
 			addr, err = config.Name(n)
 			return n, addr, err
@@ -36,7 +44,7 @@ func (config HandlerConfig) Handler() http.Handler {
 	router.
 		Methods("GET", "OPTIONS").
 		Path("/addr/{addr}").
-		Handler(get(func(n, a string) (name, addr string, err error) {
+		Handler(handleGet(func(n, a string) (name, addr string, err error) {
 			log.Printf("request to resolve address: %q", a)
 			name, err = config.Addr(a)
 			return name, "", err
@@ -47,7 +55,9 @@ func (config HandlerConfig) Handler() http.Handler {
 	return router
 }
 
-func get(f func(name, addr string) (string, string, error)) http.Handler {
+// handleGet returns a handler that handles the nameserver's GET
+// endpoints.
+func handleGet(f func(name, addr string) (string, string, error)) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Content-Type", "application/json")
 
@@ -71,11 +81,15 @@ func get(f func(name, addr string) (string, string, error)) http.Handler {
 	})
 }
 
+// Response is the schema for the data sent as a successful response
+// to a request to one of the endpoints.
 type Response struct {
 	Name string `json:"name,omitempty"`
 	Addr string `json:"addr,omitempty"`
 }
 
+// Error is the schema for the data sent as an error response to a
+// request to one of the endpoints.
 type Error struct {
 	Error string `json:"error"`
 }

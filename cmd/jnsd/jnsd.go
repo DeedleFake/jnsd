@@ -16,11 +16,13 @@ import (
 	"github.com/DeedleFake/jnsd/internal/cli"
 )
 
+// nameMapping is a two-way mapping of names to addresses.
 type nameMapping struct {
 	Name map[string]string
 	Addr map[string]string
 }
 
+// loadMapping loads a nameMapping from the file at path.
 func loadMapping(path string) (nameMapping, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -43,6 +45,8 @@ func loadMapping(path string) (nameMapping, error) {
 	return mapping, nil
 }
 
+// updateAddr updates the address-to-name mapping using the
+// name-to-address mapping. It clears the existing mapping first.
 func (mapping *nameMapping) updateAddr() {
 	mapping.Addr = make(map[string]string, len(mapping.Name))
 	for name, addr := range mapping.Name {
@@ -50,28 +54,7 @@ func (mapping *nameMapping) updateAddr() {
 	}
 }
 
-func run(ctx context.Context) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	addr := flag.String("addr", ":8080", "address to listen on")
-	tlscert := flag.String("tls.cert", "", "TLS certificate")
-	tlskey := flag.String("tls.key", "", "TLS key")
-	names := flag.String("names", "", "path to JSON name-to-address mapping")
-	flag.Parse()
-
-	listenAndServe := (*http.Server).ListenAndServe
-	if (*tlscert != "") && (*tlskey != "") {
-		listenAndServe = func(server *http.Server) error {
-			return server.ListenAndServeTLS(*tlscert, *tlskey)
-		}
-	}
-
-	mapping, err := loadMapping(*names)
-	if err != nil {
-		return fmt.Errorf("load names: %w", err)
-	}
-
+func createServer(ctx context.Contex, mapping nameMapping) *http.Server {
 	handler := jnsd.HandlerConfig{
 		Name: func(name string) (string, error) {
 			addr, ok := mapping.Name[name]
@@ -107,9 +90,35 @@ func run(ctx context.Context) error {
 		}
 	}()
 
+	return server
+}
+
+func run(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	addr := flag.String("addr", ":8080", "address to listen on")
+	tlscert := flag.String("tls.cert", "", "TLS certificate")
+	tlskey := flag.String("tls.key", "", "TLS key")
+	names := flag.String("names", "", "path to JSON name-to-address mapping")
+	flag.Parse()
+
+	listenAndServe := (*http.Server).ListenAndServe
+	if (*tlscert != "") && (*tlskey != "") {
+		listenAndServe = func(server *http.Server) error {
+			return server.ListenAndServeTLS(*tlscert, *tlskey)
+		}
+	}
+
+	mapping, err := loadMapping(*names)
+	if err != nil {
+		return fmt.Errorf("load names: %w", err)
+	}
+
 	log.Printf("Serving on %v", *addr)
 	defer log.Printf("Shutting down...")
 
+	server := createServer(ctx, mapping)
 	err = listenAndServe(server)
 	if err != nil {
 		return fmt.Errorf("listen and serve: %w", err)
