@@ -54,12 +54,14 @@ func (mapping *nameMapping) updateAddr() {
 	}
 }
 
-func createServer(ctx context.Contex, mapping nameMapping) *http.Server {
+// createServer creates a new server that serves a JNSD handler using
+// the given mapping.
+func createServer(ctx context.Context, addr string, mapping nameMapping) *http.Server {
 	handler := jnsd.HandlerConfig{
 		Name: func(name string) (string, error) {
 			addr, ok := mapping.Name[name]
 			if !ok {
-				return "", jnsd.NotRegistered
+				return "", jnsd.ErrNotRegistered
 			}
 			return addr, nil
 		},
@@ -67,14 +69,14 @@ func createServer(ctx context.Contex, mapping nameMapping) *http.Server {
 		Addr: func(addr string) (string, error) {
 			name, ok := mapping.Addr[addr]
 			if !ok {
-				return "", jnsd.NotRegistered
+				return "", jnsd.ErrNotRegistered
 			}
 			return name, nil
 		},
 	}.Handler()
 
 	server := &http.Server{
-		Addr:    *addr,
+		Addr:    addr,
 		Handler: handler,
 		BaseContext: func(lis net.Listener) context.Context {
 			return ctx
@@ -118,7 +120,7 @@ func run(ctx context.Context) error {
 	log.Printf("Serving on %v", *addr)
 	defer log.Printf("Shutting down...")
 
-	server := createServer(ctx, mapping)
+	server := createServer(ctx, *addr, mapping)
 	err = listenAndServe(server)
 	if err != nil {
 		return fmt.Errorf("listen and serve: %w", err)
