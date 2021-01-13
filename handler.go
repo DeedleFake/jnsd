@@ -11,9 +11,9 @@ import (
 )
 
 var (
-	// NotRegistered is a generic error to be returned if a name or
+	// ErrNotRegistered is a generic error to be returned if a name or
 	// address is not registered.
-	NotRegistered = errors.New("not registered")
+	ErrNotRegistered = errors.New("not registered")
 )
 
 // HandlerConfig defines necessary configuration for running the
